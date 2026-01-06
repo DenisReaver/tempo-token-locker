@@ -106,7 +106,7 @@ export default function Home() {
     args: address ? [address, LOCK_CONTRACT] : undefined,
   });
 
-  const parsedAmount = amount ? parseUnits(amount, DECIMALS) : 0n;
+  const parsedAmount = amount ? parseUnits(amount, DECIMALS) : BigInt(0);
   const needsApprove = allowance ? allowance < parsedAmount : true;
 
   const handleApprove = () => {
