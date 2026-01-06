@@ -129,10 +129,13 @@ export default function Home() {
   };
 
   // Обновляем список блокировок после успешной транзакции
-  useWaitForTransactionReceipt({
-    hash,
-    onSuccess: () => refetchLocks(),
-  });
+const { isSuccess: isTxSuccess } = useWaitForTransactionReceipt({ hash });
+
+  useEffect(() => {
+    if (isTxSuccess) {
+      refetchLocks();
+    }
+  }, [isTxSuccess, refetchLocks]);
 
   return (
     <div className="max-w-3xl mx-auto p-6 mt-10">
