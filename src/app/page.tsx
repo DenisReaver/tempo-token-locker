@@ -19,7 +19,6 @@ const TOKENS: Record<string, `0x${string}`> = {
 
 const DECIMALS = 6;
 
-// ←←← ЗАМЕНИ НА АДРЕС СВОЕГО РАЗВЕРНУТОГО КОНТРАКТА ←←←
 const LOCK_CONTRACT = '0xade936F9aCe4d659226326860233BDEB5A946DEA' as `0x${string}`;
 
 const LOCK_ABI = [
@@ -109,6 +108,14 @@ export default function Home() {
   const parsedAmount = amount ? parseUnits(amount, DECIMALS) : BigInt(0);
   const needsApprove = allowance ? allowance < parsedAmount : true;
 
+  const { isSuccess: isTxSuccess } = useWaitForTransactionReceipt({ hash });
+
+  useEffect(() => {
+    if (isTxSuccess) {
+      refetchLocks();
+    }
+  }, [isTxSuccess, refetchLocks]);
+
   const handleApprove = () => {
     writeContract({
       address: TOKENS[selectedToken],
@@ -124,144 +131,152 @@ export default function Home() {
       address: LOCK_CONTRACT,
       abi: LOCK_ABI,
       functionName: 'lockTokens',
-      args: [TOKENS[selectedToken], parsedAmount, BigInt(days)],
+      args: [TOKENS[selectedToken], parsedAmount, BigInt(days || 0)],
     });
   };
 
-  // Обновляем список блокировок после успешной транзакции
-const { isSuccess: isTxSuccess } = useWaitForTransactionReceipt({ hash });
-
-  useEffect(() => {
-    if (isTxSuccess) {
-      refetchLocks();
-    }
-  }, [isTxSuccess, refetchLocks]);
-
   return (
-    <div className="max-w-3xl mx-auto p-6 mt-10">
-      <h1 className="text-4xl font-bold text-center mb-10">Tempo Testnet Token Locker</h1>
+    <div className="min-h-screen bg-black">
+      <div className="max-w-4xl mx-auto px-6 py-12">
+        <h1 className="text-5xl font-bold text-center text-white mb-12 tracking-tight">
+          Tempo Token Locker
+        </h1>
 
-      <div className="flex justify-center mb-8">
-        <ConnectButton />
-      </div>
+        <div className="flex justify-center mb-12">
+          <ConnectButton />
+        </div>
 
-      {!isConnected ? (
-        <p className="text-center text-gray-600">Подключи кошелёк, чтобы начать</p>
-      ) : (
-        <>
-          <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-6 mb-8">
-            <p className="font-semibold mb-2">How to get test tokens?:</p>
-            <ul className="list-disc list-inside space-y-1 text-sm">
-              <li>Go to <a href="https://docs.tempo.xyz/quickstart/faucet" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">official faucet</a></li>
-              <li>Or run in the terminal:</li>
-            </ul>
-            <code className="block bg-gray-900 text-white text-xs p-3 rounded mt-2">
-              npx cast rpc tempo_fundAddress {address} --rpc-url https://rpc.testnet.tempo.xyz
-            </code>
-            <p className="text-sm mt-2">You will receive 1,000,000 of each token.</p>
-          </div>
-
-          <div className="bg-white shadow-lg rounded-lg p-8 space-y-6">
-            <div>
-              <label className="block font-medium mb-2">Token for blocking</label>
-              <select
-                value={selectedToken}
-                onChange={(e) => setSelectedToken(e.target.value as keyof typeof TOKENS)}
-                className="w-full border rounded-lg px-4 py-2"
-              >
-                {Object.keys(TOKENS).map((name) => (
-                  <option key={name} value={name}>{name}</option>
-                ))}
-              </select>
+        {!isConnected ? (
+          <p className="text-center text-gray-400 text-lg">
+            Connect your wallet, to start
+          </p>
+        ) : (
+          <>
+            {/* Faucet instructions */}
+            <div className="bg-gray-900 border border-purple-800 rounded-2xl p-8 mb-10 shadow-2xl">
+              <p className="font-bold text-purple-400 text-xl mb-4">
+                How to get test tokens?
+              </p>
+              <ul className="text-gray-300 space-y-2">
+                <li>• Go to <a href="https://docs.tempo.xyz/quickstart/faucet" target="_blank" rel="noopener noreferrer" className="text-purple-400 underline hover:text-purple-300">official faucet</a></li>
+                <li>• Or in the terminal:</li>
+              </ul>
+              <code className="block bg-black text-purple-300 text-sm p-4 rounded-lg mt-4 overflow-x-auto">
+                npx cast rpc tempo_fundAddress {address?.slice(0, 6)}...{address?.slice(-4)} --rpc-url https://rpc.testnet.tempo.xyz
+              </code>
+              <p className="text-gray-400 text-sm mt-4">You will receive 1,000,000 of each token.</p>
             </div>
 
-            <div>
-              <label className="block font-medium mb-2">Quantity</label>
-              <input
-                type="number"
-                placeholder="For example: 1000"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="w-full border rounded-lg px-4 py-2"
-              />
+            {/* Blocking form */}
+            <div className="bg-gray-900 rounded-2xl p-10 shadow-2xl border border-gray-800">
+              <div className="space-y-8">
+                <div>
+                  <label className="block text-gray-300 font-medium mb-3">Token for blocking</label>
+                  <select
+                    value={selectedToken}
+                    onChange={(e) => setSelectedToken(e.target.value as keyof typeof TOKENS)}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-6 py-4 text-white focus:outline-none focus:border-purple-500 transition"
+                  >
+                    {Object.keys(TOKENS).map((name) => (
+                      <option key={name} value={name} className="bg-gray-800">{name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-gray-300 font-medium mb-3">Quantity</label>
+                  <input
+                    type="number"
+                    placeholder="For example: 500"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-6 py-4 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 transition"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-gray-300 font-medium mb-3">Days of blocking</label>
+                  <input
+                    type="number"
+                    placeholder="For example: 30"
+                    value={days}
+                    onChange={(e) => setDays(e.target.value)}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-6 py-4 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 transition"
+                  />
+                </div>
+
+                {needsApprove && (
+                  <button
+                    onClick={handleApprove}
+                    disabled={isTxPending}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-5 rounded-xl disabled:opacity-60 transition shadow-lg"
+                  >
+                    {isTxPending ? 'Approve in progress...' : 'Approve token'}
+                  </button>
+                )}
+
+                <button
+                  onClick={handleLock}
+                  disabled={isTxPending || !amount || !days || needsApprove}
+                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-6 rounded-xl disabled:opacity-60 transition shadow-2xl text-xl"
+                >
+                  {isTxPending ? 'Blocking tokens...' : 'Lock tokens'}
+                </button>
+              </div>
             </div>
 
-            <div>
-              <label className="block font-medium mb-2">Days of blocking</label>
-              <input
-                type="number"
-                placeholder="For example: 5"
-                value={days}
-                onChange={(e) => setDays(e.target.value)}
-                className="w-full border rounded-lg px-4 py-2"
-              />
-            </div>
+            {/* Block list */}
+            <h2 className="text-3xl font-bold text-white mt-16 mb-8 text-center">My blocks</h2>
 
-            {needsApprove && (
-              <button
-                onClick={handleApprove}
-                disabled={isTxPending}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg disabled:opacity-50"
-              >
-                {isTxPending ? 'Approve в процессе...' : 'Approve token'}
-              </button>
+            {locks && locks.length > 0 ? (
+              <div className="grid gap-6 md:grid-cols-2">
+                {locks.map((lock: any, i: number) => {
+                  const tokenName = Object.entries(TOKENS).find(([_, addr]) => addr.toLowerCase() === lock.token.toLowerCase())?.[0] || lock.token;
+                  const now = Math.floor(Date.now() / 1000);
+                  const canWithdraw = now >= Number(lock.unlockTime);
+                  const daysLeft = Math.max(0, Math.ceil((Number(lock.unlockTime) - now) / 86400));
+
+                  return (
+                    <div key={i} className="bg-gray-900 rounded-2xl p-8 border border-gray-800 shadow-xl hover:border-purple-700 transition">
+                      <div className="space-y-4">
+                        <p className="text-gray-300"><strong>Token:</strong> <span className="text-purple-400 font-bold">{tokenName}</span></p>
+                        <p className="text-gray-300"><strong>Quantity:</strong> <span className="text-white font-semibold">{formatUnits(lock.amount, DECIMALS)}</span></p>
+                        <p className="text-gray-300">
+                          <strong>Unlock:</strong>{' '}
+                          {canWithdraw ? (
+                            <span className="text-green-400 font-bold text-xl">Available now!</span>
+                          ) : (
+                            <span className="text-orange-400 font-bold">Through {daysLeft} {daysLeft === 1 ? 'day' : 'days'}</span>
+                          )}
+                        </p>
+
+                        {lock.withdrawn ? (
+                          <p className="text-green-400 font-bold text-lg">✓ Withdrawn</p>
+                        ) : (
+                          <button
+                            disabled={!canWithdraw || isTxPending}
+                            onClick={() => writeContract({
+                              address: LOCK_CONTRACT,
+                              abi: LOCK_ABI,
+                              functionName: 'withdraw',
+                              args: [BigInt(i)],
+                            })}
+                            className="w-full mt-6 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-4 rounded-xl disabled:opacity-60 transition shadow-lg"
+                          >
+                            Withdraw tokens
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-center text-gray-500 text-xl py-12">No active locks</p>
             )}
-
-            <button
-              onClick={handleLock}
-              disabled={isTxPending || !amount || !days || needsApprove}
-              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 rounded-lg disabled:opacity-50"
-            >
-              {isTxPending ? 'Blocking tokens...' : 'Locked token'}
-            </button>
-          </div>
-
-          <h2 className="text-2xl font-bold mt-12 mb-6">My blocks</h2>
-
-          {locks && locks.length > 0 ? (
-            <div className="space-y-4">
-              {locks.map((lock: any, i: number) => {
-                const tokenName = Object.entries(TOKENS).find(([_, addr]) => addr.toLowerCase() === lock.token.toLowerCase())?.[0] || lock.token;
-                const now = Math.floor(Date.now() / 1000);
-                const canWithdraw = now >= Number(lock.unlockTime);
-                const daysLeft = Math.max(0, Math.ceil((Number(lock.unlockTime) - now) / 86400));
-
-                return (
-                  <div key={i} className="bg-gray-50 border rounded-lg p-6">
-                    <p><strong>Token:</strong> {tokenName}</p>
-                    <p><strong>Quantity:</strong> {formatUnits(lock.amount, DECIMALS)}</p>
-                    <p>
-                      <strong>Unlock:</strong>{' '}
-                      {canWithdraw
-                        ? <span className="text-green-600 font-bold">Available now!</span>
-                        : `Through ${daysLeft} ${daysLeft === 1 ? 'day' : daysLeft < 5 ? 'days' : 'days'}`
-                      }
-                    </p>
-                    {lock.withdrawn ? (
-                      <p className="text-green-600 font-bold">✓ Withdrawn</p>
-                    ) : (
-                      <button
-                        disabled={!canWithdraw || isTxPending}
-                        onClick={() => writeContract({
-                          address: LOCK_CONTRACT,
-                          abi: LOCK_ABI,
-                          functionName: 'withdraw',
-                          args: [BigInt(i)],
-                        })}
-                        className="mt-4 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded disabled:opacity-50"
-                      >
-                        Withdraw tokens
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-center text-gray-500">No active locks</p>
-          )}
-        </>
-      )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
